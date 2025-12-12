@@ -104,6 +104,10 @@ python amazon_order_mcp.py
 amazon-order-mcp
 ```
 
+## Acknowledgments
+
+This project is a thin MCP wrapper around the excellent [amazon-orders](https://github.com/alexdlaird/amazon-orders) library by [Alex Laird](https://github.com/alexdlaird). All the heavy lifting of authenticating with Amazon and parsing order data is done by that library. Thank you!
+
 ## License
 
 MIT
