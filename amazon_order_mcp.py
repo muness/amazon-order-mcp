@@ -74,12 +74,35 @@ def get_orders_client(otp_code: Optional[str] = None, debug: bool = False) -> Am
 
     io_handler = MCPIOHandler(otp_code=otp_code)
 
+    # Amazon's CVF "aamation" page (form#cvf-aamation-challenge-form) carries the
+    # cvf-widget-form-captcha class but is a JS challenge, not an image captcha —
+    # the default CaptchaForm claims it and crashes. Route it to the headless-
+    # browser solver (amazon-orders[browser] extra) ahead of the default chain.
+    auth_forms = None
+    try:
+        from amazonorders.conf import AmazonOrdersConfig
+        from amazonorders.contrib.browser.playwright import PlaywrightJSAuthForm
+
+        class _CvfJsForm(PlaywrightJSAuthForm):
+            def select_form(self, amazon_session, parsed):
+                self.amazon_session = amazon_session
+                if parsed.select_one("form#cvf-aamation-challenge-form"):
+                    return True
+                return super().select_form(amazon_session, parsed)
+
+        _cfg = AmazonOrdersConfig()
+        auth_forms = AmazonSession.default_auth_forms(_cfg)
+        auth_forms.insert(0, _CvfJsForm(_cfg))
+    except ImportError:
+        pass  # [browser] extra not installed — fall back to default chain
+
     _session = AmazonSession(
         username,
         password,
         otp_secret_key=otp_secret,
         io=io_handler,
         debug=debug,
+        **({"auth_forms": auth_forms, "config": _cfg} if auth_forms else {}),
     )
 
     try:
